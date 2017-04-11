@@ -22,7 +22,7 @@ import java.util.*;
 
 /**
  *
- * WARNING: The methods in this class do not perform preemptive shattering of constants because the theories produced by the learner
+ * WARNING: The methods in this class do not perform preemptive shattering of constants because the logicStuff.theories produced by the learner
  * do not contain constants (it uses unary literals instead of constants) and they assume an @alldiff constraint over all variables in them.
  *
  * Created by kuzelkao_cardiff on 02/02/17.
