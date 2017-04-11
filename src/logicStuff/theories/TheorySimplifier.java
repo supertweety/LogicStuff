@@ -95,7 +95,17 @@ public class TheorySimplifier {
         return filtered;
     }
 
-    public static boolean isImplied(Clause clause, Collection<Clause> theory, int numConstants){
+    public static boolean isGroundLiteralImplied(Literal  l, Collection<Clause> theory){
+        if (!LogicUtils.isGround(l)){
+            throw new IllegalArgumentException("The first argument must be a ground literal.");
+        }
+        Set<Clause> copyOfTheory = Sugar.setFromCollections(theory);
+        copyOfTheory.add(new Clause(l.negation()));
+        TheorySolver ts = newTS();
+        return ts.solve(copyOfTheory) == null;
+    }
+
+    private static boolean isImplied(Clause clause, Collection<Clause> theory, int numConstants){
         Set<Clause> copyOfTheory = Sugar.setFromCollections(theory);
         copyOfTheory.remove(clause);
         Clause counterExample = counterExample(clause);

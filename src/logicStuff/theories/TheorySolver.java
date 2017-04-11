@@ -433,13 +433,21 @@ public class TheorySolver {
         this.subsumptionMode = subsumptionMode;
     }
 
-    public static void main(String[] args){
-        Clause a = Clause.parse("a(X),a(Y),a(Z), !@alldiff(X,Y,Z)");
-        Clause b = Clause.parse("!a(x)");
-        Clause c = Clause.parse("!a(y)");
-        Clause d = Clause.parse("exist(x,y,z)");
 
-        System.out.println(new TheorySolver().solve(Sugar.list(a,b,c,d)));
+    public static void main(String[] args){
+        Clause a = Clause.parse("bond(id1,id2)");
+        Clause c = Clause.parse("e(id1,id2)");
+        Clause b = Clause.parse("!bond(X,Y),bond(Y,X)");
+
+        List<Clause> theory = Sugar.list(a, b,c);
+        Set<Literal> set = new TheorySolver().solve(theory);
+        for (Literal literal : set) {
+            boolean implied = TheorySimplifier.isGroundLiteralImplied(literal, theory);
+            if (implied){
+                System.out.println("is in\t"+literal);
+            }
+        }
+        System.out.println(set);
     }
 
 
