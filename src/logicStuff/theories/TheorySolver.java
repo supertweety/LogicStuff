@@ -101,6 +101,9 @@ public class TheorySolver {
                 groundRules.add(rule);
             }
         }
+
+
+
         rules = Sugar.collectionDifference(rules, groundRules);
 
 
@@ -133,7 +136,7 @@ public class TheorySolver {
             }
             state.addAll(deterministic);
 
-            Set<Clause> violatedRules = Sugar.setFromCollections(findViolatedRules(rules, state));
+            Set<Clause> violatedRules = Sugar.setFromCollections(findViolatedRules(Sugar.union(rules, initRules), state));
 
             violatedRules = Sugar.<Clause, Clause>funcallAndRemoveNulls(violatedRules, new Sugar.Fun<Clause, Clause>() {
                 @Override
@@ -194,7 +197,8 @@ public class TheorySolver {
         this.deterministicLiterals = deterministic;
 
         Set<Literal> fixedState = new HashSet<Literal>();
-        Set<Clause> activeRules = new HashSet<Clause>();
+
+        Set<Clause> initRules = new HashSet<Clause>();
         Pair<String, Integer> p = new Pair<String, Integer>();
         for (Literal e : evidence) {
             p.set(e.predicate(), e.arity());
@@ -206,7 +210,7 @@ public class TheorySolver {
                 if (!e.isNegated()) {
                     fixedState.add(e);
                 }
-                activeRules.add(new Clause(Sugar.list(e)));
+                initRules.add(new Clause(Sugar.list(e)));
             }
         }
         fixedState.addAll(deterministic);
@@ -220,8 +224,8 @@ public class TheorySolver {
             }
         }
         rules = Sugar.collectionDifference(rules, groundRules);
-        activeRules.addAll(groundRules);
-        activeRules = Sugar.<Clause, Clause>funcallAndRemoveNulls(activeRules, new Sugar.Fun<Clause, Clause>() {
+        initRules.addAll(groundRules);
+        initRules = Sugar.<Clause, Clause>funcallAndRemoveNulls(initRules, new Sugar.Fun<Clause, Clause>() {
             @Override
             public Clause apply(Clause clause) {
                 if (isGroundClauseVacuouslyTrue(clause, deterministic)) {
@@ -231,6 +235,10 @@ public class TheorySolver {
                 }
             }
         });
+
+        Set<Clause> activeRules = new HashSet<Clause>();
+        activeRules.addAll(initRules);
+
         if (this.mode == GROUND_ALL) {
             activeRules.addAll(groundAll(rules, evidence, groundAtoms));
             activeRules = Sugar.<Clause, Clause>funcallAndRemoveNulls(activeRules, new Sugar.Fun<Clause, Clause>() {
@@ -258,7 +266,7 @@ public class TheorySolver {
                     }
                     int numViolatedRules = 0;
                     for (Set<Literal> solution : candidateSolutions) {
-                        Set<Clause> violatedRules = Sugar.setFromCollections(findViolatedRules(rules, Sugar.union(solution, deterministic)));
+                        Set<Clause> violatedRules = Sugar.setFromCollections(findViolatedRules(Sugar.union(rules, initRules), Sugar.union(solution, deterministic)));
                         violatedRules = Sugar.<Clause, Clause>funcallAndRemoveNulls(violatedRules, new Sugar.Fun<Clause, Clause>() {
                             @Override
                             public Clause apply(Clause clause) {
@@ -299,7 +307,23 @@ public class TheorySolver {
 
     public List<Clause> findViolatedRules(Collection<Clause> rules, Set<Literal> currentState){
         List<Clause> violated = new ArrayList<Clause>();
-        Matching matching = newM(new Clause(currentState));
+        Set<Constant> constants = LogicUtils.constants(rules);
+        for (Literal l : currentState){
+            for (int i = 0; i < l.arity(); i++){
+                if (constants.contains(l.get(i))){
+                    constants.remove(l.get(i));
+                }
+            }
+        }
+
+        Literal constantIntroductionLiteral = new Literal("", true, constants.size());
+
+        int constantIndex = 0;
+        for (Constant c : constants){
+            constantIntroductionLiteral.set(c, constantIndex++);
+        }
+
+        Matching matching = newM(new Clause(Sugar.union(currentState, constantIntroductionLiteral)));
         for (Clause rule : rules){
             if (this.activeRuleSubsample == Integer.MAX_VALUE) {
                 Pair<Term[], List<Term[]>> substitutions = matching.allSubstitutions(LogicUtils.flipSigns(rule), 0, Integer.MAX_VALUE);
